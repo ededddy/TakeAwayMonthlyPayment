@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { Show, createSignal } from "solid-js";
 import { useParams, useRouteData } from "solid-start";
 import { FormError } from "solid-start/data";
 import {
@@ -10,7 +10,7 @@ import { createUserSession, getUser, login, register } from "~/db/session";
 // ref: 
 // https://stackoverflow.com/questions/19605150/regex-for-password-must-contain-at-least-eight-characters-at-least-one-number-a
 const nameRe = /(?=.*?[#?!@$%^&*-])/g
-const pwRe = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/g
+const pwRe = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{13,}$/g
 
 function validateUsername(username: unknown) {
   console.log(nameRe.test(username as string));
@@ -22,6 +22,12 @@ function validateUsername(username: unknown) {
 function validatePassword(password: unknown) {
   if (typeof password !== "string" || password.length < 13 || !pwRe.test(password)) {
     return `Password must be at least 13 characters long and contains at least special characters, nubmer, upper and lower characters`;
+  }
+}
+
+function validateTOS(consent: unknown) {
+  if (typeof consent !== "string" || consent === null || consent !== "on") {
+    return `You MUST agree to the Terms and Conditions to access this service`;
   }
 }
 
@@ -37,12 +43,14 @@ export function routeData() {
 export default function Login() {
   const data = useRouteData<typeof routeData>();
   const params = useParams();
+  const [getLoginType, setLoginType] = createSignal("login", { equals: false });
 
   const [loggingIn, { Form }] = createServerAction$(async (form: FormData) => {
     const loginType = form.get("loginType");
     const username = form.get("username");
     const password = form.get("password");
     const redirectTo = form.get("redirectTo") || "/";
+    const consent = loginType === "login" ? "on" : form.get("terms");
     if (
       typeof loginType !== "string" ||
       typeof username !== "string" ||
@@ -51,10 +59,11 @@ export default function Login() {
     ) {
       throw new FormError(`Form not submitted correctly.`);
     }
-    const fields = { loginType, username, password };
+    const fields = { loginType, username, password, consent };
     const fieldErrors = {
       user: validateUsername(username),
       password: validatePassword(password),
+      consent: validateTOS(consent)
     };
     if (Object.values(fieldErrors).some(Boolean)) {
       throw new FormError("Fields invalid", { fieldErrors, fields });
@@ -102,10 +111,10 @@ export default function Login() {
           <fieldset class="grid">
             <legend>Login or Register?</legend>
             <label>
-              <input type="radio" name="loginType" value="login" checked={true} /> Login
+              <input onClick={() => setLoginType("login")} type="radio" name="loginType" value="login" checked={true} /> Login
             </label>
             <label>
-              <input type="radio" name="loginType" value="register" /> Register
+              <input onClick={() => setLoginType("register")} type="radio" name="loginType" value="register" /> Register
             </label>
           </fieldset>
           <div>
@@ -117,7 +126,7 @@ export default function Login() {
           </Show>
           <div>
             <label for="password-input">Password</label>
-            <input name="password" placeholder="P@ssw0rdOfLength13" aria-invalid={loggingIn.error?.fieldErrors?.username} />
+            <input name="password" placeholder="P@ssw0rdOfLength13" type="password" aria-invalid={loggingIn.error?.fieldErrors?.password} />
           </div>
           <Show when={loggingIn.error?.fieldErrors?.password}>
             <p role="alert">{loggingIn.error.fieldErrors.password}</p>
@@ -128,12 +137,14 @@ export default function Login() {
             </p>
           </Show>
           <button type="submit">{data() ? "Login" : ""}</button>
-          <footer style={{ "margin-top": "2em" }}>
-            <label for="terms">
-              <input type="checkbox" id="terms" name="terms" />
-              I agree to the Terms and Conditions
-            </label>
-          </footer>
+          <Show when={getLoginType() === "register"}>
+            <footer style={{ "margin-top": "2em" }}>
+              <label for="terms">
+                <input type="checkbox" id="terms" name="terms" aria-invalid={loggingIn.error?.fieldErrors?.password} />
+                I agree to the Terms and Conditions
+              </label>
+            </footer>
+          </Show>
         </Form>
       </article>
     </main>
