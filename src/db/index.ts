@@ -3,7 +3,7 @@ type User = {
   username: string;
   password: string
 }
-let users: Array<User> = []
+let users: Array<User> = [{ id: 0, username: "admin", password: "Aaa123123123#$" }];
 
 export const db = {
   user: {

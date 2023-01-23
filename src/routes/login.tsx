@@ -10,7 +10,7 @@ import { createUserSession, getUser, login, register } from "~/db/session";
 // ref: 
 // https://stackoverflow.com/questions/19605150/regex-for-password-must-contain-at-least-eight-characters-at-least-one-number-a
 const nameRe = /(?=.*?[#?!@$%^&*-])/g
-const pwRe = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{13,}$/g
+const pwRe = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-\`\~\"\'\[\]\{\}\<\>\.\,]).{13,}$/g
 
 function validateUsername(username: unknown) {
   console.log(nameRe.test(username as string));
