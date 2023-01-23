@@ -1,9 +1,12 @@
-type User = {
+export type User = {
   id: number;
   username: string;
   password: string
 }
-let users: Array<User> = [{ id: 0, username: "admin", password: "Aaa123123123#$" }];
+let users: User[] = [
+  { id: 0, username: "admin", password: "Aaa123123123#$" },
+  { id: 1, username: "saxon", password: "Aaa123123123#$" }
+];
 
 export const db = {
   user: {
@@ -18,6 +21,9 @@ export const db = {
       } else {
         return users.find(user => user.username === username);
       }
+    },
+    async getListAsync() {
+      return users;
     }
   }
 }
