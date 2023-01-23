@@ -9,11 +9,10 @@ import { createUserSession, getUser, login, register } from "~/db/session";
 
 // ref: 
 // https://stackoverflow.com/questions/19605150/regex-for-password-must-contain-at-least-eight-characters-at-least-one-number-a
-const nameRe = /(?=.*?[#?!@$%^&*-])/g
+const nameRe = /(?=.*?[\`\~\[\]\{\}\(\)\<\>\\\/#?!@$%^&*-])/g
 const pwRe = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-\`\~\"\'\[\]\{\}\<\>\.\,]).{13,}$/g
 
 function validateUsername(username: unknown) {
-  console.log(nameRe.test(username as string));
   if (typeof username !== "string" || nameRe.test(username)) {
     return `Username must not contain special characters`;
   }
@@ -61,7 +60,7 @@ export default function Login() {
     }
     const fields = { loginType, username, password, consent };
     const fieldErrors = {
-      user: validateUsername(username),
+      username: validateUsername(username),
       password: validatePassword(password),
       consent: validateTOS(consent)
     };
@@ -122,14 +121,14 @@ export default function Login() {
             <input name="username" placeholder="your.username" aria-invalid={loggingIn.error?.fieldErrors?.username} />
           </div>
           <Show when={loggingIn.error?.fieldErrors?.username}>
-            <p role="alert">{loggingIn.error.fieldErrors.username}</p>
+            <p style={{ "color": "red" }} role="alert">{loggingIn.error.fieldErrors.username}</p>
           </Show>
           <div>
             <label for="password-input">Password</label>
             <input name="password" placeholder="P@ssw0rdOfLength13" type="password" aria-invalid={loggingIn.error?.fieldErrors?.password} />
           </div>
           <Show when={loggingIn.error?.fieldErrors?.password}>
-            <p role="alert">{loggingIn.error.fieldErrors.password}</p>
+            <p style={{ "color": "red" }} role="alert">{loggingIn.error.fieldErrors.password}</p>
           </Show>
           <Show when={loggingIn.error}>
             <p role="alert" id="error-message">
@@ -143,6 +142,9 @@ export default function Login() {
                 <input type="checkbox" id="terms" name="terms" aria-invalid={loggingIn.error?.fieldErrors?.password} />
                 I agree to the Terms and Conditions
               </label>
+              <Show when={loggingIn.error?.fieldErrors?.consent}>
+                <p style={{ "color": "red" }} role="alert">{loggingIn.error.fieldErrors.consent}</p>
+              </Show>
             </footer>
           </Show>
         </Form>
