@@ -1,6 +1,6 @@
-import { createSignal, createEffect, For, Show } from "solid-js";
+import { createSignal, createEffect, For, Show, on, onMount } from "solid-js";
 import { useRouteData } from "solid-start";
-import { db, User } from "~/db";
+import { db, RecordPayload, Participant, UserDto } from "~/db";
 import { routeData } from "~/routes";
 
 import { ImCross } from 'solid-icons/im'
@@ -8,18 +8,7 @@ import { ImCross } from 'solid-icons/im'
 export type SelectableUser = {
   id: number;
   username: string;
-  password: string;
   isSelected: boolean;
-}
-
-export type Participant = {
-  id: number | undefined;
-  username: string | undefined;
-  price: number;
-  validity?: {
-    selection: string | undefined;
-    price: string | undefined;
-  };
 }
 
 export type PreFlightValidations = {
@@ -28,58 +17,89 @@ export type PreFlightValidations = {
 }
 
 export type Fees = {
-  packaing: number;
+  packaging: number;
   utensil: number;
   service: number;
   delivery: number;
   reduction: number;
 }
 
-async function getOtherUsers(selfUser: User) {
+async function getOtherUsers(selfUser: UserDto) {
   const users = await db.user.getListAsync();
   return users.filter((e) => e !== selfUser);
 }
 
-export default function CreateForm() {
+export default function OrderForm(props: any) {
   const user = useRouteData<typeof routeData>();
-
-  const [otherUsers, setOtherUsers] = createSignal([] as SelectableUser[]);
 
   const [participantList, setParticipantList] = createSignal([{ id: undefined, username: undefined, price: 0 }] as Participant[])
 
+  const [otherUsers, setOtherUsers] = createSignal([] as SelectableUser[]);
+
   const [preFlightValidations, setPreFlightValidations] = createSignal({ selection: "Fill out the form first." } as PreFlightValidations);
 
-  const [extraFees, setExtraFees] = createSignal({ delivery: 0, packaing: 0, service: 0, utensil: 0, reduction: 0 } as Fees);
+  const [extraFees, setExtraFees] = createSignal({ delivery: 0, packaging: 0, service: 0, utensil: 0, reduction: 0 } as Fees);
 
   const [platform, setPlatform] = createSignal("mFood");
+  const [shopName, setShopName] = createSignal("");
 
-  createEffect(async () => {
+  createEffect(() => {
+    if (props.type === "edit")
+      setPreFlightValidations({ selection: undefined, price: undefined } as PreFlightValidations);
+    if (props.participantList !== undefined) {
+      setParticipantList([...props.participantList]);
+    }
+    if (props.extraFees !== undefined) {
+      setExtraFees({ ...props.extraFees });
+    }
+    if (props.platform !== undefined) {
+      setPlatform(props.platform);
+    }
+    if (props.shopName !== undefined) {
+      setShopName(props.shopName);
+    }
+  })
+
+  const resetSignals = () => {
+    setParticipantList([{ id: undefined, username: undefined, price: 0 }]);
+    setPlatform("mFood");
+    setShopName("");
+    setExtraFees({ delivery: 0, packaging: 0, service: 0, utensil: 0, reduction: 0 } as Fees);
+    setPreFlightValidations({ selection: "Fill out the form first." } as PreFlightValidations);
+  }
+
+  createEffect(on(participantList, async () => {
     let otherUsers = await getOtherUsers(user()!);
-    setOtherUsers(otherUsers!.map((e: User) => {
+    setOtherUsers(otherUsers!.map((e) => {
       return { ...e, isSelected: false };
     }));
-  });
+  }));
 
   return (
     <>
       <div>
         <button type="submit"
-          onClick={() => {
-            var total_fees = (extraFees().delivery, extraFees().service + extraFees().utensil + extraFees().packaing);
+          onClick={async () => {
+            var total_fees = (extraFees().delivery + extraFees().service + extraFees().utensil + extraFees().packaging);
             var raw_total = participantList().reduce((acc, cur) => acc += cur.price, 0);
-            var payload = {
-              host: user,
+            var payload: RecordPayload = {
+              host: ({ id: user()?.id, username: user()?.username } as UserDto),
               platform: platform(),
+              shop_name: shopName(),
               service_fee: extraFees().service,
-              reduction: extraFees().reduction,
               utensil_fee: extraFees().utensil,
-              packaging_fee: extraFees().packaing,
-              participantList: participantList(),
+              packaging_fee: extraFees().packaging,
+              delivery_fee: extraFees().delivery,
+              reduction: extraFees().reduction,
+              participant_list: participantList(),
               raw_total,
               total_fees,
+              total_with_fees: raw_total + total_fees,
               reduced_total: raw_total + total_fees + extraFees().reduction,
             };
-            alert(JSON.stringify(payload, null, 2));
+            await props.submitEventHandler(payload);
+            if (props.type !== 'edit')
+              resetSignals();
           }}
           disabled={!!preFlightValidations()?.selection || !!preFlightValidations()?.price}>
           Submit
@@ -99,9 +119,13 @@ export default function CreateForm() {
         <div>
           <label for="platform">Platform</label>
           <select id="platform" onChange={(e) => setPlatform((e.target as HTMLInputElement).value)}>
-            <option value="mFood">mFood</option>
-            <option value="AoMi">Ao Mi</option>
+            <option value="mFood" selected={platform() === "mFood"}>mFood</option>
+            <option value="AoMi" selected={platform() === "AoMi"}>Ao Mi</option>
           </select>
+        </div>
+        <div>
+          <label for="shopname">Shop Name</label>
+          <input name="shopname" type="text" value={shopName()} onChange={(e) => setShopName((e.target as HTMLInputElement).value)} />
         </div>
       </div>
       <hgroup>
@@ -121,8 +145,8 @@ export default function CreateForm() {
           <label for="packaing">Packaing</label>
           <input
             type="number" id="packaing" name="packaing"
-            value={extraFees().packaing}
-            onChange={(e) => setExtraFees({ ...extraFees(), packaing: Number((e.target as HTMLInputElement).value) })}
+            value={extraFees().packaging}
+            onChange={(e) => setExtraFees({ ...extraFees(), packaging: Number((e.target as HTMLInputElement).value) })}
           />
         </div>
         <div>

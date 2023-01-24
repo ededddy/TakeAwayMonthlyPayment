@@ -1,6 +1,6 @@
 import { redirect } from "solid-start";
 import { createCookieSessionStorage } from "solid-start/session";
-import { db } from ".";
+import { db, UserDto } from ".";
 
 type LoginForm = {
   username: string;
@@ -8,9 +8,10 @@ type LoginForm = {
 };
 
 export async function register({ username, password }: LoginForm) {
-  return db.user.create({
+  const user = await db.user.create({
     data: { username: username, password }
   });
+  return user ? ({ id: user.id, username: user.username } as UserDto) : null;
 }
 
 export async function login({ username, password }: LoginForm) {
@@ -18,7 +19,7 @@ export async function login({ username, password }: LoginForm) {
   if (!user) return null;
   const isCorrectPassword = password === user.password;
   if (!isCorrectPassword) return null;
-  return user;
+  return { id: user.id, username: user.username } as UserDto;
 }
 
 const sessionSecret = import.meta.env.SESSION_SECRET;
@@ -66,7 +67,7 @@ export async function getUser(request: Request) {
   }
   try {
     const user = await db.user.findUnique({ where: { id: Number(userId) } })
-    return user;
+    return user ? ({ id: user.id, username: user.username } as UserDto) : null;
   } catch {
     throw logout(request);
   }
